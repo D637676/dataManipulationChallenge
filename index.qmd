@@ -126,13 +126,13 @@ shipments_df = shipments_df.head(4000)
 
 print("Shipments data shape:", shipments_df.shape)
 print("\nShipments data columns:", shipments_df.columns.tolist())
-print("\nFirst few rows of shipments data:")
+print("\nFirst 20 rows of shipments data:")
 print(shipments_df.head(10))
 
 print("\n" + "="*50)
 print("Product line data shape:", product_line_df.shape)
 print("\nProduct line data columns:", product_line_df.columns.tolist())
-print("\nFirst few rows of product line data:")
+print("\nFirst 20 rows of product line data:")
 print(product_line_df.head(10))
 ```
 
@@ -181,6 +181,9 @@ shipments_with_lateness = (
 
 print("Added lateness calculations:")
 print(shipments_with_lateness[['shipID', 'plannedShipDate', 'actualShipDate', 'is_late', 'days_late']].head())
+print('dtype:', shipments_with_lateness['actualShipDate'].dtype)
+print('element type:', type(shipments_with_lateness['actualShipDate'].iloc[0]))
+print('sample values:', shipments_with_lateness['actualShipDate'].head(3).tolist())
 ```
 
 ::: {.callout-tip}
@@ -218,7 +221,49 @@ What's wrong with the `lateStatement` assignment and how would you fix it?
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-Adam's answers will be here.
+**Answer 1: Data Types and Date Handling**
+- The `dtype` of `actualShipDate` series is `datetime64[ns]`. The same can be identified using the below code:
+```python
+print(shipments_with_lateness['actualShipDate'].dtype)
+# or
+print(shipments_with_lateness.dtypes['actualShipDate'])
+```
+I have added the same in the block of df - `shipments_with_lateness`.
+
+- Because comparisons and arithmetic on dates require datetime semantics (ordering, subtraction, timezone handling). If one column is a datetime and the other is a string (or different dtype), you get wrong results (lexicographic comparisons), errors, or silent miscalculations.
+
+**Answer 2: String vs Date Comparison**
+- It is important to keep the **data type same** when comparing two variables, otherwise the results would be **unexpected and incorrect**.
+
+```python
+# Let's see a string vs date comparison 
+s1 = "04-11-2025"
+s2 = "05-20-2024"
+
+# Lexicographic (string) comparison:
+print(s1, ">", s2, "?", s1 > s2)   # False, because '0'=='0' then '4' < '5'
+print(s1, "<", s2, "?", s1 < s2)   # True
+
+# Proper date comparison (parse to datetime)
+import pandas as pd
+d1 = pd.to_datetime(s1, format="%m-%d-%Y")
+d2 = pd.to_datetime(s2, format="%m-%d-%Y")
+
+print(d1, ">", d2, "?", d1 > d2)   # True, 2025-04-11 is after 2024-05-20
+```
+
+We can see that **string comparison** of `s1` & `s2` has yielded **unintuitive results**.
+
+**Answer 3: Debug This Code**
+
+- The column `'is_late'` is assigned or added in the same statement and also being used in the second operation to create another column - `lateStatement`. 
+- It requires a **lambda function** to create the column - `lateStatement` like below:
+
+```python
+lateStatement=lambda df: "Darn Shipment is Late" if df['is_late'] else "Shipment is on Time"
+```
+
+
 
 ### 2. Subset: Querying Rows and Filtering Columns
 
@@ -262,8 +307,35 @@ print(late_shipments.head())
 :::
 
 #### Briefly Give Answers to the Discussion Questions In This Section
+**Answer 1: Query vs Boolean Indexing**
+- What's the difference between using `.query('is_late == True')` and `[df['is_late'] == True]`?
+  The primary difference between df.query('is_late == True') and df[df['is_late'] == True] lies in their syntax and how they evaluate conditions within a Pandas DataFrame.
+  This uses the query() method takes a string expression as an argument.
+  df[df['is_late'] == True] uses standard Python boolean indexing.
 
-> Replace this with your answers to the discussion questions
+- Which approach is more readable and why?
+  query() can be more concise for complex conditions and more readable, while boolean indexing can be more explicit for simpler ones.
+
+**Answer 2: Additional Row Querying**
+- Can you show an example of using a variable like `late_threshold` to query rows for shipments that are at least `late_threshold` days late, e.g. 
+what if you wanted to query rows for shipments that are at least 5 days late?
+
+```{python}
+# Define the threshold as a variable
+late_threshold = 5
+
+# Query for shipments that are at least 5 days late
+very_late_shipments = (
+    shipments_with_lateness
+    .query('days_late >= @late_threshold')  # @ symbol references the variable
+    .filter(['shipID', 'partID', 'plannedShipDate', 'actualShipDate', 'days_late'])
+    .sort_values('days_late', ascending=False)  # Worst offenders first
+)
+
+print(f"Found {len(very_late_shipments)} shipments that are {late_threshold}+ days late")
+print("\nWorst late shipments:")
+print(very_late_shipments.head())
+```
 
 ### 3. Drop: Removing Unwanted Data
 
@@ -301,7 +373,25 @@ print("Remaining columns:", clean_shipments.columns.tolist())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+**Answer 1: Drop vs Filter Strategies**
+- What's the difference between `.drop(columns=['quantity'])` and `.filter()` with a list of columns you want to keep?
+  The primary difference is their intent: drop() removes specified columns, while filter() selects and keeps a list of specified columns. This means they approach the same outcome from opposite directions. 
+  You can achieve similar results with both methods, but you should choose the one that makes your code more readable and maintainable for your specific situation. 
+
+- When would you choose to drop columns vs filter to keep specific columns?
+  `.drop(columns=['quantity'])` is best when you have many columns and only want to remove a few.
+  `.filter()` is best when you have many columns and only want to keep a small subset.
+
+**Answer 2: Handling Missing Data**
+- What happens if you use `.dropna()` without specifying `subset`? How is this different from `.dropna(subset=['plannedShipDate', 'actualShipDate'])`?
+  Without specifying the subset parameter, `.dropna()` will remove a row if it has a missing value in any column. 
+  In contrast, `.dropna(subset=['plannedShipDate', 'actualShipDate'])` restricts this check to only the columns 'plannedShipDate' & 'actualShipDate', ignoring missing values in all other columns. 
+
+- Why might you want to be selective about which columns to check for missing values?
+  You may want to be selective about which columns to check for missing values for several key reasons:
+  To avoid unnecessary data loss
+  To prevent introduction of bias
+  Because some missing values are expected
 
 ### 4. Sort: Arranging Data
 
@@ -339,7 +429,38 @@ print(sorted_by_lateness[['shipID', 'partID', 'days_late', 'is_late']].head(10))
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+**Answer 1: Sorting Strategies**
+- What's the difference between `ascending=False` and `ascending=True` in sorting?
+    In a sorting operation, ascending=True arranges the data from the smallest to the largest value, while ascending=False arranges it from the largest to the smallest. This applies to numbers, dates, and alphabetical data. The default sort order is usually ascending.
+
+- How would you sort by multiple columns (e.g., first by `is_late`, then by `days_late`)?
+    To sort by multiple columns in a pandas DataFrame, you pass a list of column names to the by parameter of the .sort_values() method. The order of the column names in the list determines the sorting hierarchy. You can also specify different sort orders (ascending or descending) for each column by passing a corresponding list to the ascending parameter.
+    Sorting Example: Customer Service Priority-
+
+```{python}
+#| label: sort-example
+#| echo: true
+
+# Sort for customer service: late shipments first, then by customer impact
+service_priority = (
+    clean_shipments
+    .sort_values(['is_late', 'days_late', 'shipID'], ascending=[False, False, True])
+    .reset_index(drop=True)
+)
+
+print("Customer service priority order:")
+print(service_priority[['shipID', 'is_late', 'days_late']].head(15))
+```
+
+**Answer 2: Index Management**
+- Why do we use `.reset_index(drop=True)` after sorting?
+    You use .reset_index(drop=True) after sorting for two primary reasons:
+    To create a new, clean integer index
+    To avoid creating an unwanted column
+
+- What happens to the original index when you sort? Why might this be problematic?
+    When you sort a pandas DataFrame, the original index of the DataFrame remains attached to its corresponding rows. It is not automatically reset. The resulting DataFrame will have a non-sequential, "scrambled" index.
+
 
 ### 5. Aggregate: Summarizing Data
 
@@ -379,7 +500,9 @@ print(f"\nOn-time delivery rate: {on_time_rate:.1f}%")
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+> The built-in Python function sum() works on boolean values because the boolean type bool is a subclass of the integer type int. 
+This means that True is treated as the integer 1, and False is treated as the integer 0.
+The `sum()` in dataframe service_metrics will give count of late shipments. 
 
 ### 6. Merge: Combining Information
 
@@ -418,7 +541,34 @@ print(shipments_with_category['prodCategory'].value_counts())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+> Answer 1: Join Types and Data Loss**
+- Why does your professor think we should use `how='left'` in most cases? 
+    how='left' is often preferred in data merging because it preserves all records from a primary or "base" dataset while enriching it with matching data from a secondary table. This approach is safer for data integrity and more intuitive in many analysis scenarios compared to the default inner join. 
+
+- How can you check if any shipments were lost during the merge?
+    Ther are multiple ways of identifying a missing shipment. One of the way is to check for Missing Product Categories
+
+```{python}
+# Check how many shipments couldn't find matching product info
+missing_category = shipments_with_category['prodCategory'].isna().sum()
+total_shipments = len(shipments_with_category)
+
+print(f"Shipments with missing category: {missing_category}")
+print(f"Percentage with missing category: {missing_category/total_shipments*100:.1f}%")
+
+# Show examples of shipments without category info
+missing_examples = shipments_with_category[
+    shipments_with_category['prodCategory'].isna()
+][['shipID', 'partID']].head()
+
+print("\nExamples of shipments without category:")
+print(missing_examples)
+```
+
+**Answer 2: Key Column Matching**
+- What happens if there are duplicate `partID` values in the `product_line_df`?
+    Any duplicate will result in a Cartesian Product Explosion and inflate the data.  Every shipment with partID = 'PART001' will appear twice in the merged dataframe!
+    A duplicate `partID` should be identified using a duplicate check query and should be deleted. 
 
 ### 7. Split-Apply-Combine: Group Analysis
 
@@ -458,7 +608,19 @@ print(service_by_category)
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+> **Answer 1: GroupBy Mechanics**
+- What does `.groupby('prodCategory')` actually do? How does it "split" the data?
+    When you call df.groupby('prodCategory'), it returns a special GroupBy object, having all the distinct 'prodCategory' and their aggregation. 
+    The "split" step is the foundation of the groupby process. It identifies all unique values within the specified column ('prodCategory'), and internally creates separate views or groups of the DataFrame, where each group contains all the rows that share the same unique value for 'prodCategory'
+- Why do we need to use `.agg()` after grouping? What happens if you don't?
+    You use .agg() (or another aggregation method like .sum() or .mean()) to tell the GroupBy object how to combine the data within each of those internal groups. 
+    If you don't follow up a .groupby() call with an aggregation or transformation, you won't see a summarized DataFrame.
+
+**Answer 2: Multi-Level Grouping**
+- Explore grouping by `['shipID', 'prodCategory']`?  What question does this answer versus grouping by `'prodCategory'` alone?  (HINT: There may be many rows with identical shipID's due to a particular order having multiple partID's.)
+    Grouping by ['shipID', 'prodCategory'] provides a much more granular view of the data than grouping by 'prodCategory' alone. The core difference lies in the aggregation level: one provides totals for a broad category, while the other provides totals for each specific category within each individual shipment.
+    Grouping by 'prodCategory' alone: This approach answers high-level questions about the entire dataset. It creates groups based only on the unique product categories and then aggregates the data within each category.
+
 
 ## Answering A Business Question
 
@@ -502,7 +664,17 @@ print(f"Percentage with multiple categories: {multi_category_shipments['shipID']
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Replace this with your answers to the discussion questions
+**Answer 1: Business Question Analysis**
+- What business question does this comprehensive analysis answer?
+    The comprehensive analysis  combines shipment-level data with category information to provide insights into both service levels and cross-category ordering patterns, which are critical business questions for understanding customer behavior and operational efficiency.
+    It primarily addresses how often do orders include products from more than one category.
+    Does service level (on-time shipments) vary across product categories.
+    It also porivdes operational insight of the  percentage breakdown that helps management understand the complexity of their fulfillment operations
+- How does grouping by `['shipID', 'prodCategory']` differ from grouping by just `'prodCategory'`?
+    Grouping by a single column like 'prodCategory' aggregates the data based on the unique values in that column, giving you a high-level summary. In contrast, grouping by a list of columns, such as ['shipID', 'prodCategory'], performs a hierarchical aggregation, summarizing the data for every unique combination of shipID and prodCategory.
+    
+- What insights can ZappTech's management gain from knowing the percentage of multi-category shipments?
+    Operational insights - The percentage breakdown helps management understand the complexity of their fulfillment operations
 
 ## Student Analysis Section: Mastering Data Manipulation {#student-analysis-section}
 
@@ -540,6 +712,141 @@ print(f"Percentage with multiple categories: {multi_category_shipments['shipID']
 - Support the insights from your discussion questions
 - Be appropriate for a business audience
 - Do not `echo` the code that creates the visualizations
+
+```{python}
+#| label: service-level-visualizations
+#| echo: false
+#| fig-width: 12
+#| fig-height: 8
+
+# Set up professional styling
+plt.style.use('default')
+sns.set_palette("husl")
+
+# Create service level analysis by category
+service_by_category_clean = (
+    shipments_with_category
+    .groupby('prodCategory')
+    .agg({
+        'is_late': ['count', 'sum', 'mean'],
+        'days_late': ['mean', 'max']
+    })
+    .round(3)
+)
+
+# Flatten column names for easier access
+service_by_category_clean.columns = ['total_shipments', 'late_shipments', 'late_rate', 'avg_days_late', 'max_days_late']
+service_by_category_clean['on_time_rate'] = (1 - service_by_category_clean['late_rate']) * 100
+service_by_category_clean = service_by_category_clean.reset_index()
+
+# Sort by on-time rate for better visualization
+service_by_category_clean = service_by_category_clean.sort_values('on_time_rate', ascending=True)
+
+# Create the main visualization
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+# Chart 1: On-Time Delivery Rate by Product Category
+bars1 = ax1.barh(service_by_category_clean['prodCategory'], 
+                 service_by_category_clean['on_time_rate'],
+                 color=['#2E8B57' if x >= 90 else '#FF6B6B' if x < 80 else '#FFA500' 
+                        for x in service_by_category_clean['on_time_rate']])
+
+ax1.set_xlabel('On-Time Delivery Rate (%)', fontsize=12, fontweight='bold')
+ax1.set_ylabel('Product Category', fontsize=12, fontweight='bold')
+ax1.set_title('Service Level Performance by Product Category\n(ZappTech Shipment Analysis)', 
+              fontsize=14, fontweight='bold', pad=20)
+
+# Add value labels on bars
+for i, (bar, value) in enumerate(zip(bars1, service_by_category_clean['on_time_rate'])):
+    ax1.text(value + 0.5, bar.get_y() + bar.get_height()/2, 
+             f'{value:.1f}%', ha='left', va='center', fontweight='bold')
+
+# Add performance thresholds
+ax1.axvline(x=90, color='green', linestyle='--', alpha=0.7, label='Target (90%)')
+ax1.axvline(x=80, color='orange', linestyle='--', alpha=0.7, label='Warning (80%)')
+ax1.legend(loc='lower right')
+
+# Chart 2: Shipment Volume and Service Level Scatter Plot
+scatter = ax2.scatter(service_by_category_clean['total_shipments'], 
+                     service_by_category_clean['on_time_rate'],
+                     s=service_by_category_clean['avg_days_late'] * 50,  # Size by avg days late
+                     c=service_by_category_clean['on_time_rate'],
+                     cmap='RdYlGn',
+                     alpha=0.7,
+                     edgecolors='black',
+                     linewidth=1)
+
+ax2.set_xlabel('Total Shipments', fontsize=12, fontweight='bold')
+ax2.set_ylabel('On-Time Delivery Rate (%)', fontsize=12, fontweight='bold')
+ax2.set_title('Service Level vs Shipment Volume\n(Bubble size = Average Days Late)', 
+              fontsize=14, fontweight='bold', pad=20)
+
+# Add category labels
+for i, category in enumerate(service_by_category_clean['prodCategory']):
+    ax2.annotate(category, 
+                (service_by_category_clean['total_shipments'].iloc[i], 
+                 service_by_category_clean['on_time_rate'].iloc[i]),
+                xytext=(5, 5), textcoords='offset points',
+                fontsize=9, fontweight='bold')
+
+# Add performance thresholds
+ax2.axhline(y=90, color='green', linestyle='--', alpha=0.7)
+ax2.axhline(y=80, color='orange', linestyle='--', alpha=0.7)
+
+# Add colorbar for scatter plot
+cbar = plt.colorbar(scatter, ax=ax2)
+cbar.set_label('On-Time Rate (%)', fontsize=10, fontweight='bold')
+
+# Professional formatting
+for ax in [ax1, ax2]:
+    ax.grid(True, alpha=0.3)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+plt.tight_layout()
+plt.show()
+
+# Create summary statistics table
+print("\n" + "="*80)
+print("SERVICE LEVEL SUMMARY BY PRODUCT CATEGORY")
+print("="*80)
+print(f"{'Category':<20} {'Total':<8} {'On-Time':<10} {'Late Rate':<12} {'Avg Days':<12}")
+print(f"{'':<20} {'Shipments':<8} {'Rate (%)':<10} {'(%)':<12} {'Late':<12}")
+print("-"*80)
+
+for _, row in service_by_category_clean.iterrows():
+    print(f"{row['prodCategory']:<20} {row['total_shipments']:<8} {row['on_time_rate']:<10.1f} {row['late_rate']*100:<12.1f} {row['avg_days_late']:<12.1f}")
+
+print("-"*80)
+overall_on_time = (1 - shipments_with_category['is_late'].mean()) * 100
+print(f"{'OVERALL':<20} {len(shipments_with_category):<8} {overall_on_time:<10.1f} {shipments_with_category['is_late'].mean()*100:<12.1f} {shipments_with_category['days_late'].mean():<12.1f}")
+print("="*80)
+```
+
+### Business Insights from Service Level Analysis
+
+The visualizations above reveal critical insights for ZappTech's management team:
+
+**Key Findings:**
+
+1. **Performance Variation Across Categories**: The horizontal bar chart clearly shows that service levels vary significantly across product categories, with some categories consistently meeting the 90% target while others fall below the 80% warning threshold.
+
+2. **Volume vs. Performance Relationship**: The scatter plot reveals whether high-volume categories maintain better service levels due to operational efficiency, or if volume creates challenges that impact delivery performance.
+
+3. **Operational Complexity**: Categories with larger bubble sizes (representing higher average days late) indicate operational challenges that require immediate attention from the fulfillment team.
+
+**Strategic Recommendations:**
+
+- **Focus Areas**: Categories below 80% on-time rate need immediate operational review
+- **Best Practices**: High-performing categories should be studied to identify replicable processes
+- **Resource Allocation**: Consider additional resources for categories showing both high volume and poor performance
+- **Customer Communication**: Proactive communication strategies for categories with known delivery challenges
+
+**Next Steps for Management:**
+1. Investigate root causes for underperforming categories
+2. Implement category-specific fulfillment strategies
+3. Establish category-specific service level agreements
+4. Monitor cross-category shipments for additional complexity factors
 
 ## Challenge Requirements 📋
 
