@@ -473,7 +473,7 @@ Late shipments sample:
 <li>Which approach is more readable and why? query() can be more concise for complex conditions and more readable, while boolean indexing can be more explicit for simpler ones.</li>
 </ul>
 <p><strong>Answer 2: Additional Row Querying</strong> - Can you show an example of using a variable like <code>late_threshold</code> to query rows for shipments that are at least <code>late_threshold</code> days late, e.g.&nbsp; what if you wanted to query rows for shipments that are at least 5 days late?</p>
-<div id="8dfbcc04" class="cell" data-execution_count="4">
+<div id="33cf7ecb" class="cell" data-execution_count="4">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Define the threshold as a variable</span></span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>late_threshold <span class="op">=</span> <span class="dv">5</span></span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -733,7 +733,7 @@ Name: count, dtype: int64</code></pre>
 <ul>
 <li>How can you check if any shipments were lost during the merge? Ther are multiple ways of identifying a missing shipment. One of the way is to check for Missing Product Categories</li>
 </ul>
-<div id="b4d7d3d2" class="cell" data-execution_count="10">
+<div id="eead0b84" class="cell" data-execution_count="10">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Check how many shipments couldn't find matching product info</span></span>
 <span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>missing_category <span class="op">=</span> shipments_with_category[<span class="st">'prodCategory'</span>].isna().<span class="bu">sum</span>()</span>
 <span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>total_shipments <span class="op">=</span> <span class="bu">len</span>(shipments_with_category)</span>
