@@ -222,20 +222,25 @@ What's wrong with the `lateStatement` assignment and how would you fix it?
 #### Briefly Give Answers to the Discussion Questions In This Section
 
 **Answer 1: Data Types and Date Handling**
+
 - The `dtype` of `actualShipDate` series is `datetime64[ns]`. The same can be identified using the below code:
-```python
+
+
+```{python}
 print(shipments_with_lateness['actualShipDate'].dtype)
 # or
 print(shipments_with_lateness.dtypes['actualShipDate'])
 ```
+
 I have added the same in the block of df - `shipments_with_lateness`.
 
 - Because comparisons and arithmetic on dates require datetime semantics (ordering, subtraction, timezone handling). If one column is a datetime and the other is a string (or different dtype), you get wrong results (lexicographic comparisons), errors, or silent miscalculations.
 
 **Answer 2: String vs Date Comparison**
+
 - It is important to keep the **data type same** when comparing two variables, otherwise the results would be **unexpected and incorrect**.
 
-```python
+```{python}
 # Let's see a string vs date comparison 
 s1 = "04-11-2025"
 s2 = "05-20-2024"
@@ -252,14 +257,14 @@ d2 = pd.to_datetime(s2, format="%m-%d-%Y")
 print(d1, ">", d2, "?", d1 > d2)   # True, 2025-04-11 is after 2024-05-20
 ```
 
-We can see that **string comparison** of `s1` & `s2` has yielded **unintuitive results**.
+We can see that string comparison of `s1` & `s2` has yielded unintuitive results.
 
 **Answer 3: Debug This Code**
 
 - The column `'is_late'` is assigned or added in the same statement and also being used in the second operation to create another column - `lateStatement`. 
 - It requires a **lambda function** to create the column - `lateStatement` like below:
 
-```python
+```{python}     
 lateStatement=lambda df: "Darn Shipment is Late" if df['is_late'] else "Shipment is on Time"
 ```
 
@@ -308,6 +313,7 @@ print(late_shipments.head())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 **Answer 1: Query vs Boolean Indexing**
+
 - What's the difference between using `.query('is_late == True')` and `[df['is_late'] == True]`?
   The primary difference between df.query('is_late == True') and df[df['is_late'] == True] lies in their syntax and how they evaluate conditions within a Pandas DataFrame.
   This uses the query() method takes a string expression as an argument.
@@ -317,6 +323,7 @@ print(late_shipments.head())
   query() can be more concise for complex conditions and more readable, while boolean indexing can be more explicit for simpler ones.
 
 **Answer 2: Additional Row Querying**
+
 - Can you show an example of using a variable like `late_threshold` to query rows for shipments that are at least `late_threshold` days late, e.g. 
 what if you wanted to query rows for shipments that are at least 5 days late?
 
@@ -374,6 +381,8 @@ print("Remaining columns:", clean_shipments.columns.tolist())
 #### Briefly Give Answers to the Discussion Questions In This Section
 
 **Answer 1: Drop vs Filter Strategies**
+
+
 - What's the difference between `.drop(columns=['quantity'])` and `.filter()` with a list of columns you want to keep?
   The primary difference is their intent: drop() removes specified columns, while filter() selects and keeps a list of specified columns. This means they approach the same outcome from opposite directions. 
   You can achieve similar results with both methods, but you should choose the one that makes your code more readable and maintainable for your specific situation. 
@@ -383,6 +392,8 @@ print("Remaining columns:", clean_shipments.columns.tolist())
   `.filter()` is best when you have many columns and only want to keep a small subset.
 
 **Answer 2: Handling Missing Data**
+
+
 - What happens if you use `.dropna()` without specifying `subset`? How is this different from `.dropna(subset=['plannedShipDate', 'actualShipDate'])`?
   Without specifying the subset parameter, `.dropna()` will remove a row if it has a missing value in any column. 
   In contrast, `.dropna(subset=['plannedShipDate', 'actualShipDate'])` restricts this check to only the columns 'plannedShipDate' & 'actualShipDate', ignoring missing values in all other columns. 
@@ -430,6 +441,7 @@ print(sorted_by_lateness[['shipID', 'partID', 'days_late', 'is_late']].head(10))
 #### Briefly Give Answers to the Discussion Questions In This Section
 
 **Answer 1: Sorting Strategies**
+
 - What's the difference between `ascending=False` and `ascending=True` in sorting?
     In a sorting operation, ascending=True arranges the data from the smallest to the largest value, while ascending=False arranges it from the largest to the smallest. This applies to numbers, dates, and alphabetical data. The default sort order is usually ascending.
 
@@ -453,6 +465,7 @@ print(service_priority[['shipID', 'is_late', 'days_late']].head(15))
 ```
 
 **Answer 2: Index Management**
+
 - Why do we use `.reset_index(drop=True)` after sorting?
     You use .reset_index(drop=True) after sorting for two primary reasons:
     To create a new, clean integer index
@@ -499,8 +512,9 @@ print(f"\nOn-time delivery rate: {on_time_rate:.1f}%")
 :::
 
 #### Briefly Give Answers to the Discussion Questions In This Section
+**Answer 1: Boolean Aggregation**
 
-> The built-in Python function sum() works on boolean values because the boolean type bool is a subclass of the integer type int. 
+- The built-in Python function sum() works on boolean values because the boolean type bool is a subclass of the integer type int. 
 This means that True is treated as the integer 1, and False is treated as the integer 0.
 The `sum()` in dataframe service_metrics will give count of late shipments. 
 
@@ -541,7 +555,7 @@ print(shipments_with_category['prodCategory'].value_counts())
 
 #### Briefly Give Answers to the Discussion Questions In This Section
 
-> Answer 1: Join Types and Data Loss**
+**Answer 1: Join Types and Data Loss**
 - Why does your professor think we should use `how='left'` in most cases? 
     how='left' is often preferred in data merging because it preserves all records from a primary or "base" dataset while enriching it with matching data from a secondary table. This approach is safer for data integrity and more intuitive in many analysis scenarios compared to the default inner join. 
 
@@ -609,6 +623,7 @@ print(service_by_category)
 #### Briefly Give Answers to the Discussion Questions In This Section
 
 > **Answer 1: GroupBy Mechanics**
+
 - What does `.groupby('prodCategory')` actually do? How does it "split" the data?
     When you call df.groupby('prodCategory'), it returns a special GroupBy object, having all the distinct 'prodCategory' and their aggregation. 
     The "split" step is the foundation of the groupby process. It identifies all unique values within the specified column ('prodCategory'), and internally creates separate views or groups of the DataFrame, where each group contains all the rows that share the same unique value for 'prodCategory'
@@ -617,6 +632,7 @@ print(service_by_category)
     If you don't follow up a .groupby() call with an aggregation or transformation, you won't see a summarized DataFrame.
 
 **Answer 2: Multi-Level Grouping**
+
 - Explore grouping by `['shipID', 'prodCategory']`?  What question does this answer versus grouping by `'prodCategory'` alone?  (HINT: There may be many rows with identical shipID's due to a particular order having multiple partID's.)
     Grouping by ['shipID', 'prodCategory'] provides a much more granular view of the data than grouping by 'prodCategory' alone. The core difference lies in the aggregation level: one provides totals for a broad category, while the other provides totals for each specific category within each individual shipment.
     Grouping by 'prodCategory' alone: This approach answers high-level questions about the entire dataset. It creates groups based only on the unique product categories and then aggregates the data within each category.
@@ -665,6 +681,7 @@ print(f"Percentage with multiple categories: {multi_category_shipments['shipID']
 #### Briefly Give Answers to the Discussion Questions In This Section
 
 **Answer 1: Business Question Analysis**
+
 - What business question does this comprehensive analysis answer?
     The comprehensive analysis  combines shipment-level data with category information to provide insights into both service levels and cross-category ordering patterns, which are critical business questions for understanding customer behavior and operational efficiency.
     It primarily addresses how often do orders include products from more than one category.
